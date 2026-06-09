@@ -6,7 +6,9 @@
 * { font-family: 'Inter', sans-serif !important; }
 
 /* ── Hide Streamlit default elements ── */
-#MainMenu, footer, header { visibility: hidden; }
+#MainMenu, footer {
+    visibility: hidden;
+}
 .block-container { padding-top: 1rem !important; }
 
 /* ── Gradient Hero Background ── */
