@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 # =========================
-# Load CSS Safely
+# Load CSS
 # =========================
 css_path = os.path.join(
     os.path.dirname(__file__),
@@ -32,7 +32,10 @@ css_path = os.path.join(
 
 if os.path.exists(css_path):
     with open(css_path) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+        st.markdown(
+            f"<style>{f.read()}</style>",
+            unsafe_allow_html=True
+        )
 
 # =========================
 # Header
@@ -43,7 +46,7 @@ st.markdown(
 )
 
 # =========================
-# Load Model & Data
+# Load Data & Model
 # =========================
 model, scaler, encoder = load_model()
 df = load_data()
@@ -75,41 +78,82 @@ st.markdown(
 
 feature_names = list(X.columns)
 
-if isinstance(shap_values, list):
-    mean_shap = np.mean(
-        [np.abs(class_vals).mean(axis=0) for class_vals in shap_values],
-        axis=0
+shap_arr = np.array(shap_values)
+
+# Debug information
+st.write("SHAP Output Shape:", shap_arr.shape)
+
+try:
+
+    # SHAP returns (samples, features, classes)
+    if shap_arr.ndim == 3:
+
+        mean_shap = np.abs(shap_arr).mean(axis=(0, 2))
+
+    # SHAP returns (samples, features)
+    elif shap_arr.ndim == 2:
+
+        mean_shap = np.abs(shap_arr).mean(axis=0)
+
+    # SHAP returns list[class]
+    elif isinstance(shap_values, list):
+
+        mean_shap = np.mean(
+            [np.abs(v).mean(axis=0) for v in shap_values],
+            axis=0
+        )
+
+    else:
+
+        st.error(f"Unsupported SHAP shape: {shap_arr.shape}")
+        st.stop()
+
+    mean_shap = np.array(mean_shap).flatten()
+
+    # Fix mismatch automatically
+    if len(mean_shap) > len(feature_names):
+        mean_shap = mean_shap[:len(feature_names)]
+
+    if len(mean_shap) < len(feature_names):
+        st.error(
+            f"Feature mismatch. Features={len(feature_names)}, "
+            f"SHAP={len(mean_shap)}"
+        )
+        st.stop()
+
+    importance_df = pd.DataFrame({
+        "Feature": feature_names,
+        "Mean |SHAP|": mean_shap
+    })
+
+    importance_df = importance_df.sort_values(
+        "Mean |SHAP|",
+        ascending=True
     )
-else:
-    mean_shap = np.abs(shap_values).mean(axis=0)
 
-importance_df = pd.DataFrame({
-    "Feature": feature_names,
-    "Mean |SHAP|": mean_shap
-})
+    fig = px.bar(
+        importance_df,
+        x="Mean |SHAP|",
+        y="Feature",
+        orientation="h",
+        color="Mean |SHAP|",
+        color_continuous_scale="Viridis",
+        template="plotly_dark"
+    )
 
-importance_df = importance_df.sort_values(
-    "Mean |SHAP|",
-    ascending=True
-)
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=500
+    )
 
-fig = px.bar(
-    importance_df,
-    x="Mean |SHAP|",
-    y="Feature",
-    orientation="h",
-    template="plotly_dark",
-    color="Mean |SHAP|",
-    color_continuous_scale="Viridis",
-    title="Feature Importance"
-)
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
-fig.update_layout(
-    paper_bgcolor="rgba(0,0,0,0)",
-    plot_bgcolor="rgba(0,0,0,0)"
-)
-
-st.plotly_chart(fig, use_container_width=True)
+except Exception as e:
+    st.error(f"Global SHAP error: {e}")
 
 # =========================
 # Local Explanation
@@ -128,39 +172,51 @@ st.markdown(
     f"`{df['species'].iloc[sample_idx]}`"
 )
 
-if isinstance(shap_values, list):
+try:
+
+    if isinstance(shap_values, list):
+
+        values = shap_values[0][sample_idx]
+        base_value = explainer.expected_value[0]
+
+    elif shap_arr.ndim == 3:
+
+        values = shap_arr[sample_idx, :, 0]
+        base_value = (
+            explainer.expected_value[0]
+            if isinstance(explainer.expected_value, (list, np.ndarray))
+            else explainer.expected_value
+        )
+
+    else:
+
+        values = shap_arr[sample_idx]
+        base_value = explainer.expected_value
 
     explanation = shap.Explanation(
-        values=shap_values[0][sample_idx],
-        base_values=explainer.expected_value[0],
+        values=values,
+        base_values=base_value,
         data=X_scaled[sample_idx],
         feature_names=feature_names
     )
 
-else:
+    fig2 = plt.figure(figsize=(10, 6))
 
-    explanation = shap.Explanation(
-        values=shap_values[sample_idx],
-        base_values=explainer.expected_value,
-        data=X_scaled[sample_idx],
-        feature_names=feature_names
+    shap.waterfall_plot(
+        explanation,
+        show=False
     )
 
-fig2 = plt.figure(figsize=(10, 6))
+    st.pyplot(fig2)
 
-shap.waterfall_plot(
-    explanation,
-    show=False
-)
+    plt.close()
 
-st.pyplot(fig2)
-
-plt.close()
+except Exception as e:
+    st.error(f"Local SHAP error: {e}")
 
 # =========================
-# Info Box
+# Information
 # =========================
 st.info(
-    "💡 Red bars increase the prediction score, "
-    "while blue bars decrease it."
+    "💡 Red bars increase the prediction score, while blue bars decrease it."
 )
