@@ -5,6 +5,7 @@
 ### End-to-End Machine Learning Web Application
 
 [![Live App](https://img.shields.io/badge/🚀_Live_App-Click_Here-FF4B4B?style=for-the-badge)](https://iris-ml-classifier-rjdfjqmqbgxq6iph6jspxu.streamlit.app)
+[![Google Colab](https://img.shields.io/badge/🚀_Launch_in_Google_Colab-F9AB00?style=for-the-badge)](https://colab.research.google.com/github/Akshaya-Vasireddi/iris-ML-classifier/blob/main/Iris_ML.ipynb)
 [![GitHub](https://img.shields.io/badge/GitHub-Akshaya_Vasireddi-181717?style=for-the-badge&logo=github)](https://github.com/Akshaya-Vasireddi)
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Deployed-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
